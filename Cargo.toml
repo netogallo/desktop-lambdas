@@ -1,0 +1,8 @@
+[package]
+name = "desktop-lambdas"
+version = "0.1.0"
+authors = ["Ernesto Rodriguez <ernesto.rodriguez@quantifio.no>"]
+edition = "2018"
+
+[dependencies]
+regex = "1"
