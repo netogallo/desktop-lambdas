@@ -9,11 +9,11 @@ mod error;
 use desktop::*;
 use error::*;
 
-struct EntryIterator<'a, 'x>{
-    parser: &'a mut ParserState<'x>
+struct EntryIterator<'a>{
+    parser: &'a mut ParserState
 }
 
-impl<'a, 'x> Iterator for EntryIterator<'a, 'x>{
+impl<'a, 'x> Iterator for EntryIterator<'a>{
     type Item = Entry;
 
     fn next(&mut self) -> Option<Entry>{
@@ -21,15 +21,28 @@ impl<'a, 'x> Iterator for EntryIterator<'a, 'x>{
     }
 }
 
-struct ParserState<'a>{
+struct ParserState{
     current_line: String,
-    buffer: Box<Iterator<Item = &'a Result<String, std::io::Error>>>,
+    buffer: Box<Iterator<Item = Result<String, std::io::Error>>>,
     empty: bool
 }
 
-impl<'a> ParserState<'a>{
+enum EmptyIter<T> {
+    EmptyIter,
+    Dummy(T)
+}
 
-    fn try_update_current(&mut self, value: &'a Result<String, std::io::Error>) -> bool{
+impl<T> Iterator for EmptyIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T>{
+        return None;
+    }
+}
+
+impl ParserState{
+
+    fn try_update_current(&mut self, value: Result<String, std::io::Error>) -> bool{
         match value{
             Ok(line) => {
                 self.current_line = line.clone();
@@ -84,19 +97,16 @@ impl<'a> ParserState<'a>{
         }
     }
 
-    fn empty() -> ParserState<'a>{
-        let mut vc : Vec<Result<String, std::io::Error>> = Vec::new();
-        let mut vit = vc.iter();
-        let mut it = Box::from(Vec::new().iter());
+    fn empty() -> ParserState{
 
         return ParserState {
             current_line: String::from(""),
-            buffer: it,
+            buffer: Box::new(EmptyIter::EmptyIter),
             empty: true
         }
     }
 
-    pub fn new(mut it : Box<Iterator<Item = &'a Result<String, std::io::Error>>>) -> ParserState<'a>{
+    pub fn new(mut it : Box<Iterator<Item = Result<String, std::io::Error>>>) -> ParserState{
 
         return match it.next() {
             Some(initial) => {
@@ -118,7 +128,7 @@ impl<'a> ParserState<'a>{
     }
 }
 
-impl<'a> Iterator for ParserState<'a>{
+impl<'a> Iterator for ParserState{
     type Item = Section;
 
     fn next(&mut self) -> Option<Section>{
@@ -173,7 +183,9 @@ pub fn parse(location: &String) -> Result<Vec<Entry>, ParseError> {
     match file{
         Ok(content) => {
             let buff = BufReader::new(content);
-            parse_sections(buff.lines());
+            let it = Box::new(buff.lines());
+            let parser = ParserState::new(it);
+            //parse_sections(buff.lines());
             let mut acc : Vec<Entry> = Vec::new();
 
             return Ok(acc);
