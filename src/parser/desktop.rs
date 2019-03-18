@@ -53,4 +53,8 @@ impl Section{
 
         return Option::None;
     }
+
+    pub fn add_entries(&mut self, mut entries: Vec<Entry>){
+        self.entries.append(entries.as_mut());
+    }
 }

@@ -9,31 +9,30 @@ mod error;
 use desktop::*;
 use error::*;
 
-struct EntryIterator<'a, I : Iterator<Item = Result<String, std::io::Error>>>{
-    parser: &'a mut ParserState<I>
+struct EntryIterator<'a, 'x>{
+    parser: &'a mut ParserState<'x>
 }
 
-impl<'a, I : Iterator<Item = Result<String, std::io::Error>>> Iterator for EntryIterator<'a, I>{
+impl<'a, 'x> Iterator for EntryIterator<'a, 'x>{
     type Item = Entry;
 
     fn next(&mut self) -> Option<Entry>{
-        let value = self.parser.buffer.next();
-        return None;
+        return self.parser.next_entry();
     }
 }
 
-struct ParserState<I : Iterator<Item = Result<String, std::io::Error>>>{
+struct ParserState<'a>{
     current_line: String,
-    buffer: I,
+    buffer: Box<Iterator<Item = &'a Result<String, std::io::Error>>>,
     empty: bool
 }
 
-impl<I : Iterator<Item = Result<String, std::io::Error>>> ParserState<I>{
+impl<'a> ParserState<'a>{
 
-    fn try_update_current(&mut self, value: Result<String, std::io::Error>) -> bool{
+    fn try_update_current(&mut self, value: &'a Result<String, std::io::Error>) -> bool{
         match value{
             Ok(line) => {
-                self.current_line = line;
+                self.current_line = line.clone();
                 return true;
             }
             Err(_) => { return false; }
@@ -51,7 +50,7 @@ impl<I : Iterator<Item = Result<String, std::io::Error>>> ParserState<I>{
     }
 
     pub fn next_entry(&mut self) -> Option<Entry>{
-        if self.empty{
+        if self.empty {
             return None;
         }
         
@@ -64,8 +63,7 @@ impl<I : Iterator<Item = Result<String, std::io::Error>>> ParserState<I>{
     }
 
     pub fn next_entries(&mut self) -> Vec<Entry>{
-        let mut it = EntryIterator{parser: self};
-        return Vec::from_iter(it);
+        return Vec::from_iter(EntryIterator{parser: self});
     }
 
     pub fn next_section(&mut self) -> Option<Section>{
@@ -78,11 +76,53 @@ impl<I : Iterator<Item = Result<String, std::io::Error>>> ParserState<I>{
             Some(header) => {
                 let mut result = header;
                 self.advance();
+                result.add_entries(self.next_entries());
 
                 return Some(result);
             }
             None => { return None; }
         }
+    }
+
+    fn empty() -> ParserState<'a>{
+        let mut vc : Vec<Result<String, std::io::Error>> = Vec::new();
+        let mut vit = vc.iter();
+        let mut it = Box::from(Vec::new().iter());
+
+        return ParserState {
+            current_line: String::from(""),
+            buffer: it,
+            empty: true
+        }
+    }
+
+    pub fn new(mut it : Box<Iterator<Item = &'a Result<String, std::io::Error>>>) -> ParserState<'a>{
+
+        return match it.next() {
+            Some(initial) => {
+                match initial {
+                    Ok(initial) => {
+                        ParserState {
+                            current_line: initial.clone(),
+                            buffer: it,
+                            empty: false
+                        }
+                    }
+                    Err(_) => {
+                        ParserState::empty()
+                    }
+                }
+            }
+            None => { ParserState::empty() }
+        }
+    }
+}
+
+impl<'a> Iterator for ParserState<'a>{
+    type Item = Section;
+
+    fn next(&mut self) -> Option<Section>{
+        return self.next_section();
     }
 }
 
