@@ -176,7 +176,18 @@ pub fn parse_sections<I : Iterator<Item = Result<String, std::io::Error>>>(mut l
     return result;
 }
 
-pub fn parse(location: &String) -> Result<Vec<Entry>, ParseError> {
+pub fn parse_str(content: &String) -> Result<Vec<Section>, ParseError>{
+    let vec : Vec<Result<String, std::io::Error>> = Vec::from_iter(content.lines().map(|line: &str| Ok(String::from(line))));
+    for line in content.lines(){
+        println!("{}", line);
+    }
+    println!("{}", "kaiser");
+    let it = Box::new(vec.into_iter());
+    let parser = ParserState::new(it);
+    return Ok(Vec::from_iter(parser));
+}
+
+pub fn parse(location: &String) -> Result<Vec<Section>, ParseError> {
 
     let file = File::open(location);
 
@@ -185,8 +196,7 @@ pub fn parse(location: &String) -> Result<Vec<Entry>, ParseError> {
             let buff = BufReader::new(content);
             let it = Box::new(buff.lines());
             let parser = ParserState::new(it);
-            //parse_sections(buff.lines());
-            let mut acc : Vec<Entry> = Vec::new();
+            let acc : Vec<Section> = Vec::from_iter(parser);
 
             return Ok(acc);
         }

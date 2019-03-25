@@ -4,8 +4,8 @@ use std::io::prelude::*;
 use regex::Regex;
 
 pub struct Entry{
-    key: String,
-    value: String
+    pub key: String,
+    pub value: String
 }
 
 impl Entry{
@@ -28,8 +28,8 @@ impl Entry{
 }
 
 pub struct Section{
-    name: String,
-    entries: Vec<Entry>
+    pub name: String,
+    pub entries: Vec<Entry>
 }
 
 impl Section{
@@ -42,11 +42,11 @@ impl Section{
     }
 
     pub fn try_parse_header(s: String) -> Option<Section>{
-        let re = Regex::new(r"[((\w|\s)+)]").unwrap();
+        let re = Regex::new(r"\[((\w|\s)+)\]").unwrap();
         let captures = re.captures_iter(&s);
 
         for cap in captures{
-            let s : String = String::from(cap.get(0).unwrap().as_str());
+            let s : String = String::from(cap.get(1).unwrap().as_str());
             let r = Section::from_header(s);
             return Option::Some(r);
         }

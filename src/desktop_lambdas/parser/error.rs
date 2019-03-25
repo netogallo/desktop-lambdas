@@ -14,4 +14,8 @@ impl ParseError{
             message: String::from(error.description())
         }
     }
+
+    pub fn to_string(&self) -> &String{
+        return &self.message;
+    }
 }
